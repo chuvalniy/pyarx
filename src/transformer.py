@@ -5,7 +5,20 @@ import torch.nn as nn
 
 
 class FeedForward(nn.Module):
-    pass
+    def __init__(self, d_model, dropout=0.1):
+        super(FeedForward, self).__init__()
+
+        self.linear1 = nn.Linear(d_model, d_model * 4)
+        self.linear2 = nn.Linear(d_model * 4, d_model)
+
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        out = self.relu(self.linear1(x))
+        out = self.linear2(out)
+
+        return self.dropout(out)
 
 
 class MultiHeadAttention(nn.Module):
@@ -70,5 +83,5 @@ class PositionalEncoding(nn.Module):
 
 
 class TransformerEncoder(nn.Module):
-    def __init__(self):
+    def __init__(self, d_model, n_head, n_layer, vocab_size, dropout=0.1):
         super(TransformerEncoder, self).__init__()
