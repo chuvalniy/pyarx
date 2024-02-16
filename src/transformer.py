@@ -51,14 +51,14 @@ class MultiHeadAttention(nn.Module):
 
         wei = torch.matmul(q_proj, torch.transpose(k_proj, 2, 3)) / math.sqrt(self.head_dim)
         wei = torch.matmul(
-            self.dropout(torch.nn.functional.softmax(wei, dim=-1)),
+            torch.nn.functional.softmax(wei, dim=-1),
             v_proj
         )
 
         wei = wei.transpose(1, 2).contiguous().reshape(B, T, C)
         wei = self.projection(wei)
 
-        return wei
+        return self.dropout(wei)
 
 
 class PositionalEncoding(nn.Module):
@@ -82,6 +82,26 @@ class PositionalEncoding(nn.Module):
         return out
 
 
+class TransformerBlock(nn.Module):
+    def __init__(self, d_model, n_head, dropout=0.1):
+        super(TransformerBlock, self).__init__()
+
+        self.mha = MultiHeadAttention(d_model, n_head, dropout)
+        self.mha_ln = nn.LayerNorm(d_model)
+
+        self.ff = FeedForward(d_model, dropout)
+        self.ff_ln = nn.LayerNorm(d_model)
+
+    def forward(self, x):
+        mha_out = self.mha(x, x, x)
+        mha_out = self.mha_ln(x + mha_out)
+
+        ff_out = self.ff(mha_out)
+        ff_out = self.ff_ln(mha_out + ff_out)
+
+        return ff_out
+
+
 class TransformerEncoder(nn.Module):
-    def __init__(self, d_model, n_head, n_layer, vocab_size, dropout=0.1):
+    def __init__(self, d_model, n_head, n_layer, dropout=0.1):
         super(TransformerEncoder, self).__init__()
