@@ -103,5 +103,22 @@ class TransformerBlock(nn.Module):
 
 
 class TransformerEncoder(nn.Module):
-    def __init__(self, d_model, n_head, n_layer, dropout=0.1):
+    def __init__(self, d_model, vocab_size, n_layer, n_head, dropout=0.1):
         super(TransformerEncoder, self).__init__()
+
+        self.emb = nn.Embedding(vocab_size, d_model)
+        self.pe = PositionalEncoding(d_model, dropout=dropout)
+        self.pe_dropout = nn.Dropout(dropout)
+
+        self.layers = nn.ModuleList([
+            TransformerBlock(d_model, n_head, dropout) for _ in range(n_layer)
+        ])
+
+    def forward(self, x):
+        output = self.emb(x)
+        output = self.pe_dropout(output + self.pe(output))
+
+        for layer in self.layers:
+            output = layer(output)
+
+        return output
