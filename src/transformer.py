@@ -2,7 +2,7 @@ import math
 
 import torch
 import torch.nn as nn
-
+from longformer import SlidingWindowMHA
 
 class FeedForward(nn.Module):
     def __init__(self, d_model, dropout=0.1):
