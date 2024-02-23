@@ -53,14 +53,6 @@ class SlidingWindowMHA(nn.Module):
 
                 wei[:, :, i, j] = res[:, :, 0, 0]
 
-        # query      key.T
-        # ****    * * * * *
-        # ****    * * * * *
-        # ****    * * * * *
-        # ****    * * * * *
-        # ****
-
-        # wei = torch.matmul(q_proj, torch.transpose(k_proj, 2, 3)) / torch.sqrt(self.head_dim)
         wei = torch.matmul(
             torch.nn.functional.softmax(wei, dim=-1),
             v_proj
