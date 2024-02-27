@@ -1,6 +1,6 @@
 import torch
 
-from src.longformer import SlidingWindowMHA
+from src.attention import SlidingWindowMHA
 
 
 def test_sliding_window_mha():
