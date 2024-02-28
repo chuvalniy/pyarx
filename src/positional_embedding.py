@@ -26,7 +26,7 @@ class PositionalEncoding(nn.Module):
 
 
 class RotaryPositionalEmbeddings(nn.Module):
-    def __init__(self, d_model, max_length):
+    def __init__(self, d_model, max_length=10_000):
         super(RotaryPositionalEmbeddings, self).__init__()
 
         cos_pe = torch.zeros(1, max_length, d_model)
@@ -42,5 +42,19 @@ class RotaryPositionalEmbeddings(nn.Module):
         self.register_buffer('cos_pe', cos_pe)
         self.register_buffer('sin_pe', cos_pe)
 
-    def forward(self, q, k):
-        pass
+    def forward(self, x):
+        _, T, _ = x.shape
+
+        x_rotated = self.rotate(x)
+        out = x * self.cos_pe[:, :T, :] + x_rotated * self.sin_pe[:, :T, :]
+        return out
+
+    def rotate(self, x):
+        _, _, E = x.shape
+
+        out = torch.zeros_like(x)
+        for i in range(0, E, 2):
+            out[:, :, i + 1] = x[:, :, i]
+            out[:, :, i] = -x[:, :, i + 1]
+
+        return out
