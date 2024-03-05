@@ -26,6 +26,9 @@ class PositionalEncoding(nn.Module):
 
 
 class RotaryPositionalEmbeddings(nn.Module):
+    """
+    https://arxiv.org/abs/2104.09864
+    """
     def __init__(self, d_model, max_length=10_000):
         super(RotaryPositionalEmbeddings, self).__init__()
 
