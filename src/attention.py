@@ -142,7 +142,6 @@ class GroupedQueryAttention(nn.Module):
         return self.dropout(wei)
 
 
-
 class SlidingWindowMHA(nn.Module):
     """
     Sliding window approach for self-attention mechanism.
@@ -201,3 +200,63 @@ class SlidingWindowMHA(nn.Module):
         wei = self.projection(wei)
 
         return self.dropout(wei)
+
+
+class KVCacheMHA(nn.Module):
+    def __init__(self, d_model, n_head, dropout=0.1):
+        super(KVCacheMHA, self).__init__()
+
+        self.d_model = d_model
+        self.n_head = n_head
+        self.head_dim = d_model // n_head
+
+        self.dropout = dropout
+
+        self.query = nn.Linear(d_model, d_model)
+        self.key = nn.Linear(d_model, d_model)
+        self.value = nn.Linear(d_model, d_model)
+
+        self.proj = nn.Linear(d_model, d_model)
+        self.dropout = nn.Dropout(p=dropout)
+
+        self.k_cache = None
+        self.v_cache = None
+
+    def forward(self, q, k, v):
+        B, T, _ = q.shape
+
+        q_copy = q.clone()
+        k_copy = k.clone()
+        v_copy = v.clone()
+
+        if not self.training:
+            if self.k_cache is None or self.v_cache is None:
+                self.k_cache = k_copy
+                self.v_cache = v_copy
+            else:
+                k_copy = torch.cat((k_copy, self.k_cache))
+                v_copy = torch.cat((v_copy, self.v_cache))
+
+                self.k_cache = k_copy
+                self.v_cache = v_copy
+
+        q_proj = self.query(q_copy)
+        q_proj = q_proj.reshape((B, T, self.n_head, self.head_dim)).transpose(1, 2)
+
+        k_proj = self.key(k_copy)
+        k_proj = k_proj.reshape((B, T, self.n_head, self.head_dim)).transpose(1, 2)
+
+        v_proj = self.value(v_copy)
+        v_proj = v_proj.reshape((B, T, self.n_head, self.head_dim)).transpose(1, 2)
+
+        wei = torch.matmul(q_proj, torch.transpose(k_proj, 2, 3)) / math.sqrt(self.head_dim)
+        wei = torch.matmul(
+            torch.nn.functional.softmax(wei, dim=-1),
+            v_proj
+        )
+
+        wei = wei.transpose(1, 2).contiguous().reshape(B, T, C)
+        wei = self.projection(wei)
+
+        return self.dropout(wei)
+
