@@ -1,6 +1,36 @@
 import torch
 import torch.nn as nn
 from vgg.model import VGG
+import itertools
+import math
+
+
+class DefaultBoxes:
+    def __init__(self, scales, anchor_boxes, fig_size, aspect_ratios):
+        """
+
+        """
+        # Create default boxes for all feature map at once
+        # Output shape (n_feature_maps, n_boxes, 4) => (cx, cy, scaled_h, scaled_w)
+        self.scales = scales
+        self.anchor_boxes = anchor_boxes  # n_feature_maps, n_anchor_boxes
+        self.fig_size = fig_size  # n_feature_maps, fig_size
+        self.aspect_ratios = aspect_ratios  # n_feature_maps, n_aspect_ratios
+
+    def generate_default_boxes(self):
+
+        # Every scale is responsible for a single feature map, so len(scales) == n_feature_maps
+        all_default_boxes = []
+        for idx, scale in enumerate(self.scales):
+            default_boxes = []
+            for i, j in itertools.product(range(self.fig_size[idx]), repeat=2):
+                f_k = self.fig_size
+
+                cx = (i + 0.5) / f_k
+                cy = (j + 0.5) / f_k
+                for a_r in self.aspect_ratios[idx]:
+                    w = scale * math.sqrt(a_r)
+                    h = scale / math.sqrt(a_r)
 
 
 class ClassifierSSD(nn.Module):
@@ -85,6 +115,10 @@ class SSD(nn.Module):
         print(clf_5.shape)
 
         return x
+
+    def _calculate_scale(self, k, m):
+        scale = 0.2 + (0.9 - 0.2) / (m - 1) * (k - 1)
+        return scale
 
 
 if __name__ == '__main__':
