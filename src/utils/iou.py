@@ -2,6 +2,12 @@ import torch
 
 
 def intersection_over_union(boxes_preds, boxes_labels):
+    """
+    Computes intersection over union score for boxes that have (cx, cy, w, h) format.
+
+    :param boxes_preds: Predictions for bounding boxes.
+    :param boxes_labels: True bounding boxes.
+    """
     box1_x1 = boxes_preds[..., 0:1] - boxes_preds[..., 2:3] / 2
     box1_y1 = boxes_preds[..., 1:2] - boxes_preds[..., 3:4] / 2
     box1_x2 = boxes_preds[..., 0:1] + boxes_preds[..., 2:3] / 2
@@ -21,5 +27,6 @@ def intersection_over_union(boxes_preds, boxes_labels):
     box1_area = abs((box1_x2 - box1_x1) * (box1_y2 - box1_y1))
     box2_area = abs((box2_x2 - box2_x1) * (box2_y2 - box2_y1))
 
+    # Consider division by zero by adding epsilon.
     iou = intersection / (box1_area + box2_area - intersection + 1e-6)
-    return iou if iou <= 1.0 else 0.0
+    return iou

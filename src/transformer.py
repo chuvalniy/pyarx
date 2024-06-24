@@ -23,8 +23,6 @@ class FeedForward(nn.Module):
         return self.dropout(out)
 
 
-
-
 class TransformerBlock(nn.Module):
     def __init__(self, d_model, n_head, dropout=0.1):
         super(TransformerBlock, self).__init__()
