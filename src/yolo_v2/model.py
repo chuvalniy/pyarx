@@ -1,36 +1,6 @@
 import torch
 import torch.nn as nn
 
-class DarkNetConvBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, n_bottleneck: int, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.conv = ConvBlock(in_channels, out_channels, 3, stride=1, padding=1)
-        self.bottleneck = nn.ModuleList([Bottleneck(out_channels, in_channels) for _ in range(n_bottleneck)])
-
-
-    def forward(self, x):
-        out = self.conv(x)
-        for module in self.bottleneck:
-            out = module(out)
-
-        return out
-
-
-class Bottleneck(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.bottleneck = nn.Sequential(
-            ConvBlock(in_channels, out_channels, 1, stride=1, padding=0),
-            ConvBlock(out_channels, in_channels, 3, stride=1, padding=1)
-        )
-
-
-    def forward(self, x):
-        return self.bottleneck(x)
-
-
 
 class ConvBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, kernel_size: tuple[int, int], stride: int, padding: int, *args, **kwargs):
@@ -46,51 +16,84 @@ class ConvBlock(nn.Module):
     def forward(self, x):
         x = self.block(x)
         return x
-    
-
-class DarkNet19(nn.Module):
-
-    config = [(32, 0), 'M', (64, 0), 'M', (128, 1), 'M', (256, 1), 'M', (512, 1), 'M', (1024, 2)]
-
-    def __init__(self, in_channels: int, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.darknet = self._build_darknet(in_channels)
-    
-    def _build_darknet(self, in_channels: int):
-        blocks = []
-
-        for layer in DarkNet19.config:
-            if isinstance(layer, tuple):
-                out_channels, n_bottleneck = layer
-                blocks.append(DarkNetConvBlock(in_channels, out_channels, n_bottleneck))
-
-                in_channels = out_channels
-            else:
-                blocks.append(nn.MaxPool2d(2, 2))
-
-
-        return nn.Sequential(*blocks)
-        
-
-    def forward(self, x):
-        return self.darknet(x)
+  
 
 
 class YOLOv2(nn.Module):
-    def __init__(self, in_channels: int, *args, **kwargs):
+    def __init__(self, in_channels: int, n_classes, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.darknet = DarkNet19(in_channels)
+        self.conv1 = ConvBlock(3, 32, (3, 3), 1, 1)
+        self.pool1 = nn.MaxPool2d(2, 2)
+
+        self.conv2 = ConvBlock(32, 64, (3, 3), 1, 1)
+        self.pool2 = nn.MaxPool2d(2, 2)
+
+        self.conv3 = nn.Sequential(
+            ConvBlock(64, 128, (3, 3), 1, 1),
+            ConvBlock(128, 64, (1, 1), 1, 0),
+            ConvBlock(64, 128, (3, 3), 1, 1)
+        )
+        self.pool3 = nn.MaxPool2d(2, 2)
+
+        self.conv4 = nn.Sequential(
+            ConvBlock(128, 256, (3, 3), 1, 1),
+            ConvBlock(256, 128, (1, 1), 1, 0),
+            ConvBlock(128, 256, (3, 3), 1, 1)
+        )
+        self.pool4 = nn.MaxPool2d(2, 2)
+
+        self.conv5 = nn.Sequential(
+            ConvBlock(256, 512, (3, 3), 1, 1),
+            ConvBlock(512, 256, (1, 1), 1, 0),
+            ConvBlock(256, 512, (3, 3), 1, 1),
+            ConvBlock(512, 256, (1, 1), 1, 0),
+            ConvBlock(256, 512, (3, 3), 1, 1)
+        )
+        self.pool5 = nn.MaxPool2d(2, 2)
+
+        self.conv6 = nn.Sequential(
+            ConvBlock(512, 1024, (3, 3), 1, 1),
+            ConvBlock(1024, 512, (1, 1), 1, 0),
+            ConvBlock(512, 1024, (3, 3), 1, 1),
+            ConvBlock(1024, 512, (1, 1), 1, 0),
+            ConvBlock(512, 1024, (3, 3), 1, 1)
+        )
+
+        self.conv7 = nn.Sequential(
+            ConvBlock(1024, 1024, (3, 3), 1, 1),
+            ConvBlock(1024, 1024, (3, 3), 1, 1),
+        )
+        self.conv8 = ConvBlock(3072, 1024, (3, 3), 1, 1)
+        self.conv9 = nn.Conv2d(1024, (5 + n_classes) * 5, (1, 1), 1, 0)
+
 
     def forward(self, x):
-        return self.darknet(x)
+        # Backbone
+        x = self.pool1(self.conv1(x))
+        x = self.pool2(self.conv2(x))
+        x = self.pool3(self.conv3(x))
+        x = self.pool4(self.conv4(x))
+        x = self.conv5(x)
+        x_copy = x.clone()
+        x = self.pool5(x)
+        x = self.conv6(x)
+
+        x = self.conv7(x)
+        x_copy = x_copy.reshape(-1, 2048, 13, 13)
+        x = torch.concat((x_copy, x), dim=1)
+        x = self.conv8(x)
+        x = self.conv9(x)
+
+        return x
+
     
 
 
 if __name__ == "__main__":
     x = torch.randn(4, 3, 416, 416)
 
-    model = YOLOv2(3)
+    model = YOLOv2(3, 20)
     out = model(x)
 
     print(out.shape)
