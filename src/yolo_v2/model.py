@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from postprocessor import YOLOv2PostProcessor
 
 
 class ConvBlock(nn.Module):
@@ -79,6 +80,7 @@ class YOLOv2(nn.Module):
         x = self.pool5(x)
         x = self.conv6(x)
 
+        # Head
         x = self.conv7(x)
         x_copy = x_copy.reshape(-1, 2048, 13, 13)
         x = torch.concat((x_copy, x), dim=1)
@@ -89,11 +91,16 @@ class YOLOv2(nn.Module):
 
     
 
+# Loss
+# Clustering of anchor boxes
 
 if __name__ == "__main__":
     x = torch.randn(4, 3, 416, 416)
 
     model = YOLOv2(3, 20)
     out = model(x)
+        
+    postprocessor = YOLOv2PostProcessor()
+    out = postprocessor.forward(out)
 
     print(out.shape)
