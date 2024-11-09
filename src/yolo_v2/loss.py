@@ -1,7 +1,14 @@
-import torch
 import torch.nn as nn
+import torch
 
-class YoloLoss(nn.Module):
+
+class Yolov2Loss(nn.Module):
     def __init__(self):
-        super(YoloLoss, self).__init__()
-        n
+        super(Yolov2Loss, self).__init__()
+
+
+    def forward(self, y_true, y_pred):
+        # noobj loss
+        # anchor and pred loss
+        # bb loss
+        
