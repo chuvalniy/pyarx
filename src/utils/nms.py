@@ -1,4 +1,4 @@
-from iou import intersection_over_union
+from src.utils import intersection_over_union
 import torch
 
 
