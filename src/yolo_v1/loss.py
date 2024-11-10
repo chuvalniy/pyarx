@@ -28,19 +28,19 @@ class YOLOv1Loss(nn.Module):
         box_iou2 = intersection_over_union(y_pred[..., 26:30], y_true[..., 21:25])
 
         concat_iou = torch.concat([box_iou1, box_iou2], dim=-1)
-        box_ids = torch.argmax(concat_iou, dim=-1).unsqueeze(-1)
+        box_ids = torch.argmax(concat_iou, dim=-1, keepdim=True)
 
         has_object = y_true[..., 20:21]
         no_object = 1 - has_object
 
         # Find resbonsible box for cell prediction
-        responsible_box = box_ids * y_pred[..., 20:25] + (1 - box_ids) * y_pred[..., 25:30]
+        responsible_box = box_ids * y_pred[..., 25:30] + (1 - box_ids) * y_pred[..., 20:25]
 
         # Bounding Box Loss
         responsible_box[..., 3:5] = (
             torch.sign(responsible_box[..., 3:5]) * 
             torch.sqrt(torch.abs(responsible_box[..., 3:5]) + self.eps)
-        )
+        )  # Prevent NaN from taking square root of negative values
 
 
         target_box = torch.concat(

@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from .loss import YOLOv1Loss
 
 
 class ConvBlock(nn.Module):
@@ -108,15 +107,10 @@ class YOLOv1(nn.Module):
 
 
 if __name__ == "__main__":
-    import os
-    print(os.getcwd())
     x = torch.randn(4, 3, 448, 448)
-    y = torch.randn(4, 7, 7, 25)
-    model = YOLOv1(in_channels=3)
-    criterion = YOLOv1Loss()
 
+    model = YOLOv1(in_channels=3)
     pred = model(x)
-    loss = (pred, y)
 
 
 
