@@ -1,7 +1,5 @@
 import torch
 import torch.nn as nn
-from postprocessor import YOLOv2PostProcessor
-
 
 class ConvBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, kernel_size: tuple[int, int], stride: int, padding: int, *args, **kwargs):
@@ -88,19 +86,3 @@ class YOLOv2(nn.Module):
         x = self.conv9(x)
 
         return x
-
-    
-
-# Loss
-# Clustering of anchor boxes
-
-if __name__ == "__main__":
-    x = torch.randn(4, 3, 416, 416)
-
-    model = YOLOv2(3, 20)
-    out = model(x)
-        
-    postprocessor = YOLOv2PostProcessor()
-    out = postprocessor.forward(out)
-
-    print(out.shape)
