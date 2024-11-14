@@ -17,7 +17,6 @@ class YOLOv1Dataset(Dataset):
         super().__init__()
         self.images_path = images_path
         self.labels_path = labels_path
-
         self.data_files = [f.replace(".txt", "") for f in os.listdir(labels_path)]
 
         self.cell_size = cell_size
