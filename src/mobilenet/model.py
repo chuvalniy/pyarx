@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from config import CONFIG
 
 
 class ConvBlock(nn.Module):
@@ -52,69 +53,38 @@ class DepthWiseConv2d(nn.Module):
 
 
 class MobileNet(nn.Module):
-    def __init__(self, in_channels, out_classes):
+    def __init__(self, in_channels, n_classes, alpha=1.0):
         super().__init__()
 
-        self.conv_1 = ConvBlock(in_channels, 32, 3, 2, 1)
-        self.dw_conv_1 = DepthWiseConv2d(32, 32, 3, 1, 1)
+        self._config = CONFIG
+        self.in_channels = in_channels
+        self.n_classes = n_classes
+        self.alpha = alpha
 
-        self.conv_2 = ConvBlock(32, 64, 1, 1, 0)
-        self.dw_conv_2 = DepthWiseConv2d(64, 64, 3, 2, 1)
+        self.model = self._build_model(self._config)
 
-        self.conv_3_1 = ConvBlock(64, 128, 1, 1, 0)
-        self.dw_conv_3_1 = DepthWiseConv2d(128, 128, 3, 1, 1)
-        self.conv_3_2 = ConvBlock(128, 128, 1, 1, 0)
-        self.dw_conv_3_2 = DepthWiseConv2d(128, 128, 3, 2, 1)
+    def _build_model(self, config):
+        layers = []
+        in_channels = self.in_channels
 
-        self.conv_4_1 = ConvBlock(128, 256, 1, 1, 0)
-        self.dw_conv_4_1 = DepthWiseConv2d(256, 256, 3, 1, 1)
-        self.conv_4_2 = ConvBlock(256, 256, 1, 1, 0)
-        self.dw_conv_4_2 = DepthWiseConv2d(256, 256, 3, 2, 1)
-        self.conv_4_3 = ConvBlock(256, 512, 1, 1, 0)
+        for layer in config['layers']:
+            if layer['type'] == 'conv':
+                layers.append(ConvBlock(in_channels, **layer['params']))
+                in_channels = layer['params']['out_channels']
+            elif layer['type'] == 'dw_conv':
+                layers.append(DepthWiseConv2d(in_channels, **layer['params']))
+                in_channels = layer['params']['out_channels']
+            elif layer['type'] == 'flatten':
+                layers.append(nn.Flatten(**layer['params']))
+            elif layer['type'] == 'avg_pool':
+                layers.append(nn.AvgPool2d(**layer['params']))
+            elif layer['type'] == 'fc':
+                layers.append(nn.Linear(out_features=self.n_classes, **layer['params']))
 
-        self.conv5 = nn.ModuleList([
-            nn.Sequential(
-                DepthWiseConv2d(512, 512, 3, 1, 1),
-                ConvBlock(512, 512, 1, 1, 0)
-            ) for _ in range(5)
-        ])
-
-        self.dw_conv_6_1 = DepthWiseConv2d(512, 512, 3, 2, 1)
-        self.conv_6_1 = ConvBlock(512, 1024, 1, 1, 0)
-        self.dw_conv_6_2 = DepthWiseConv2d(1024, 1024, 3, 2, 4)
-        self.conv_6_2 = ConvBlock(1024, 1024, 1, 1, 0)
-
-        self.avg_pool = nn.AvgPool2d(kernel_size=7, stride=1)
-        self.flatten = nn.Flatten()
-        self.fc = nn.Linear(1024, out_classes)
+        return nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.conv_1(x)
-        x = self.dw_conv_1(x)
-        x = self.conv_2(x)
-        x = self.dw_conv_2(x)
-        x = self.conv_3_1(x)
-        x = self.dw_conv_3_1(x)
-        x = self.conv_3_2(x)
-        x = self.dw_conv_3_2(x)
-        x = self.conv_4_1(x)
-        x = self.dw_conv_4_1(x)
-        x = self.conv_4_2(x)
-        x = self.dw_conv_4_2(x)
-        x = self.conv_4_3(x)
-
-        for conv in self.conv5:
-            x = conv(x)
-
-        x = self.dw_conv_6_1(x)
-        x = self.conv_6_1(x)
-        x = self.dw_conv_6_2(x)
-        x = self.conv_6_2(x)
-        x = self.avg_pool(x)
-        x = self.flatten(x)
-        x = self.fc(x)
-
-        return x
+        return self.model(x)
 
 
 if __name__ == "__main__":
@@ -122,3 +92,4 @@ if __name__ == "__main__":
 
     model = MobileNet(3, 5)
     out = model(x)
+    print(out.shape)
