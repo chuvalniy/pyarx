@@ -53,13 +53,12 @@ class DepthWiseConv2d(nn.Module):
 
 
 class MobileNet(nn.Module):
-    def __init__(self, in_channels, n_classes, alpha=1.0):
+    def __init__(self, in_channels, n_classes):
         super().__init__()
 
         self._config = CONFIG
         self.in_channels = in_channels
         self.n_classes = n_classes
-        self.alpha = alpha
 
         self.model = self._build_model(self._config)
 
